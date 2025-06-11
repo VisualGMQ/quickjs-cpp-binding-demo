@@ -1,0 +1,3 @@
+[submodule "3rdlibs/quickjs"]
+	path = 3rdlibs/quickjs
+	url = https://github.com/quickjs-ng/quickjs.git

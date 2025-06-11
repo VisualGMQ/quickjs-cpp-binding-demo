@@ -1,0 +1,10 @@
+macro(AddDemo name)
+    file(GLOB_RECURSE SRC ./*.hpp ./*.cpp ./*.js ./*.mjs)
+    add_executable(${name})
+    target_sources(${name} PRIVATE ${SRC})
+    target_link_libraries(${name} PRIVATE qjs)
+    target_compile_features(${name} PRIVATE cxx_std_17)
+    set_target_properties(${name} PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endmacro()
+
+add_subdirectory(01-HelloWorld)
