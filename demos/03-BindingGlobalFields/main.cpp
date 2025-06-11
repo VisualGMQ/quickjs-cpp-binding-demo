@@ -1,0 +1,192 @@
+#include "quickjs-libc.h"
+#include "quickjs.h"
+
+#include <fstream>
+#include <iostream>
+#include <sstream>
+
+// most quickjs return -1 as error & 0 and success
+#define QJS_CALL(expr)                                                     \
+    do {                                                                   \
+        if ((expr) < 0)                                                    \
+            std::cerr << "QJS error when execute: " << #expr << std::endl; \
+    } while (0)
+
+void ExecuteScript(JSContext* ctx, const std::string& filename, int flags) {
+    std::ifstream file(filename, std::ios::in | std::ios::binary);
+    if (!file) {
+        std::cerr << "open file main.js failed" << std::endl;
+    }
+    std::stringstream ss;
+    ss << file.rdbuf();
+    std::string content = ss.str();
+
+    JSValue result =
+        JS_Eval(ctx, content.c_str(), content.size(), nullptr, flags);
+
+    if (JS_IsException(result)) {
+        js_std_dump_error(ctx);
+    }
+
+    JS_FreeValue(ctx, result);
+}
+
+int gGlobalVar = 123;
+int gNonChangableVar = 245;
+
+void BindMutable(JSContext* ctx) {
+    JSValue new_obj = JS_NewInt32(ctx, gGlobalVar);
+    if (JS_IsException(new_obj)) {
+        js_std_dump_error(ctx);
+        JS_FreeValue(ctx, new_obj);
+        return;
+    }
+
+    JSValue global_this = JS_GetGlobalObject(ctx);
+
+    // JS_WRITABLE | JS_ENUMERABLE | JS_CONFIGURABLE by default
+    JS_SetPropertyStr(ctx, global_this, "global_var", new_obj);
+
+    // don't forget cleanup
+    JS_FreeValue(ctx, global_this);
+    JS_FreeValue(ctx, new_obj);
+}
+
+void BindConst(JSContext* ctx) {
+    JSValue new_obj = JS_NewInt32(ctx, gNonChangableVar);
+    if (JS_IsException(new_obj)) {
+        js_std_dump_error(ctx);
+        JS_FreeValue(ctx, new_obj);
+        return;
+    }
+
+    JSValue global_this = JS_GetGlobalObject(ctx);
+
+    /*
+     * benefit:
+     *      * it will handle JSValue lifetime automatically(you don't need call
+     * JS_FreeValue)
+     *      * it can set value property
+     */
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "const_global_var1",
+                                       new_obj, JS_PROP_ENUMERABLE));
+
+    /* we can also use JS_DefinePropertyValueStr to change value/prop by exists
+     * JSValue like re-define a new variable in js
+     */
+    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "const_global_var2", new_obj));
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "const_global_var2",
+                                       new_obj, JS_PROP_ENUMERABLE));
+
+    /* but we can't use JS_SetPropertyStr to change const value(it will return
+     * -1 as error) (like as assignment operation in js)
+     */
+    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "const_global_var2", new_obj));
+
+    // or you can use JS_DefinePropertyValue, the difference is it need a JSAtom
+    // as name JSAtom aime to reuse name(deduce string copy)
+    JSAtom name = JS_NewAtom(ctx, "const_global_var3");
+    JS_DefinePropertyValue(ctx, global_this, name, new_obj, JS_PROP_ENUMERABLE);
+    JS_FreeAtom(ctx, name);
+
+    // don't need free it
+    // JS_FreeValue(ctx, new_obj);
+    JS_FreeValue(ctx, global_this);
+}
+
+void BindByDifferentProperty(JSContext* ctx) {
+    JSValue new_obj = JS_NewInt32(ctx, 666);
+    if (JS_IsException(new_obj)) {
+        js_std_dump_error(ctx);
+        JS_FreeValue(ctx, new_obj);
+        return;
+    }
+
+    JSValue global_this = JS_GetGlobalObject(ctx);
+
+    /**** NOTE: all property area JS_PROP_XXX rather than JS_PROP_HAS_XXX (the
+     * later is used for internal) *****/
+
+    // enumerable variable can be used in `for ... in` and `Object.keys()`
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_enumerable",
+                                       new_obj, JS_PROP_ENUMERABLE));
+    // NOTE: JS_PROP_NORMAL == 0
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
+                                       "var_with_non_enumerable", new_obj, JS_PROP_NORMAL));
+    // and we can't modify it property when don't has JS_PROP_CONFIGURABLE
+    // this will not work but don't throw exception
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
+                                       "var_with_non_enumerable", new_obj,
+                                       JS_PROP_ENUMERABLE));
+
+    // compare with var_with_non_enumerable
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
+                                       "var_with_configurable", new_obj,
+                                       JS_PROP_CONFIGURABLE));
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
+                                       "var_with_configurable", new_obj,
+                                       JS_PROP_ENUMERABLE));
+    
+    /* JS_PROP_THROW will throw exception when did invalid operation by:
+     * JS_SetPropertyXXX()
+     * JS_DeletePropertyXXX()
+     *
+     * (yes, it used for Cpp rather than JavaScript)
+     */
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_throw",
+                                       new_obj, JS_PROP_THROW));
+    JSValue new_obj2 = JS_NewFloat64(ctx, 3.14);
+    // can't assignment due to don't has JS_PROP_WRITABLE, will return -1
+    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw", new_obj2));
+    // compare with above
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_throw_writable",
+                                       new_obj, JS_PROP_THROW|JS_PROP_WRITABLE));
+    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw_writable", new_obj2));
+    JS_FreeValue(ctx, new_obj2);
+
+    // TODO: add JS_PROP_GETSET example
+
+    // don't need free it
+    // JS_FreeValue(ctx, new_obj);
+    JS_FreeValue(ctx, global_this);
+}
+
+int main() {
+    JSRuntime* runtime = JS_NewRuntime();
+    if (!runtime) {
+        std::cerr << "init runtime failed" << std::endl;
+        return 1;
+    }
+
+    JSContext* ctx = JS_NewContext(runtime);
+    if (!ctx) {
+        std::cerr << "create context failed" << std::endl;
+        JS_FreeRuntime(runtime);
+        return 2;
+    }
+
+    // must first add runtime handler
+    js_std_init_handlers(runtime);
+
+    js_std_add_helpers(ctx, 0, NULL);
+
+    BindMutable(ctx);
+    BindConst(ctx);
+    BindByDifferentProperty(ctx);
+
+    std::cout << "-------------non strict mode---------------" << std::endl;
+    ExecuteScript(ctx, "demos/03-BindingGlobalFields/main.js", 0);
+
+    std::cout << std::endl
+              << "-------------strict mode---------------" << std::endl;
+    ExecuteScript(ctx, "demos/03-BindingGlobalFields/main.js",
+                  JS_EVAL_FLAG_STRICT);
+
+    JS_FreeContext(ctx);
+
+    // don't forget free handlers
+    js_std_free_handlers(runtime);
+
+    JS_FreeRuntime(runtime);
+    return 0;
+}

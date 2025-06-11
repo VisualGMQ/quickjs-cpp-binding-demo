@@ -1,0 +1,1 @@
+AddDemo(03_binding_global_fields)

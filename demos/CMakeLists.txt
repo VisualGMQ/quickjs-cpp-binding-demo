@@ -9,3 +9,4 @@ endmacro()
 
 add_subdirectory(01-HelloWorld)
 add_subdirectory(02-UsingInternalModules)
+add_subdirectory(03-BindingGlobalFields)
