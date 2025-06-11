@@ -40,15 +40,8 @@ int main() {
 
     // exception handle
     if (JS_IsException(result)) {
-        JSValue exception = JS_GetException(ctx);
-        std::cerr << "JS Error: " << JS_ToCString(ctx, exception) << std::endl;
-        JSValue stack = JS_GetPropertyStr(ctx, exception, "stack");
-        // if has stack info, output stack info
-        if (!JS_IsUndefined(stack)) {
-            std::cerr << "stack: " << JS_ToCString(ctx, stack) << std::endl;
-        }
-        JS_FreeValue(ctx, exception);
-        JS_FreeValue(ctx, stack);
+        // from quickjs-libc.hpp, to log exception
+        js_std_dump_error(ctx);
     }
 
     // don't forget cleanup

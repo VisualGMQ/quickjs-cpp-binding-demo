@@ -8,3 +8,4 @@ macro(AddDemo name)
 endmacro()
 
 add_subdirectory(01-HelloWorld)
+add_subdirectory(02-UsingInternalModules)
