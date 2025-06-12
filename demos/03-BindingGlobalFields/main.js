@@ -37,5 +37,9 @@ try {
     console.log(e)
 }
 
-console.log(normal_var)
-normal_var = 22
+// will trigger getter
+console.log(var_with_getter_setter)
+
+// will trigger setter
+var_with_getter_setter = 33
+

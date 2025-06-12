@@ -111,8 +111,8 @@ void BindByDifferentProperty(JSContext* ctx) {
     QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_enumerable",
                                        new_obj, JS_PROP_ENUMERABLE));
     // NOTE: JS_PROP_NORMAL == 0
-    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
-                                       "var_with_non_enumerable", new_obj, JS_PROP_NORMAL));
+    QJS_CALL(JS_DefinePropertyValueStr(
+        ctx, global_this, "var_with_non_enumerable", new_obj, JS_PROP_NORMAL));
     // and we can't modify it property when don't has JS_PROP_CONFIGURABLE
     // this will not work but don't throw exception
     QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
@@ -126,7 +126,7 @@ void BindByDifferentProperty(JSContext* ctx) {
     QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
                                        "var_with_configurable", new_obj,
                                        JS_PROP_ENUMERABLE));
-    
+
     /* JS_PROP_THROW will throw exception when did invalid operation by:
      * JS_SetPropertyXXX()
      * JS_DeletePropertyXXX()
@@ -139,12 +139,46 @@ void BindByDifferentProperty(JSContext* ctx) {
     // can't assignment due to don't has JS_PROP_WRITABLE, will return -1
     QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw", new_obj2));
     // compare with above
-    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_throw_writable",
-                                       new_obj, JS_PROP_THROW|JS_PROP_WRITABLE));
-    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw_writable", new_obj2));
+    QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this,
+                                       "var_with_throw_writable", new_obj,
+                                       JS_PROP_THROW | JS_PROP_WRITABLE));
+    QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw_writable",
+                               new_obj2));
     JS_FreeValue(ctx, new_obj2);
 
-    // TODO: add JS_PROP_GETSET example
+    // JS_PROP_GETSET can set field's getter & setter
+    JSValue getter = JS_NewCFunction(
+        ctx,
+        +[](JSContext*, JSValue self, int argc, JSValueConst* argv) {
+            std::cout << "getter function called" << std::endl;
+            return JS_UNDEFINED;
+        },
+        "getter", 0);
+
+    JSValue setter = JS_NewCFunction(
+        ctx,
+        +[](JSContext*, JSValue self, int argc, JSValueConst* argv) {
+            std::cout << "setter function called" << std::endl;
+            return JS_UNDEFINED;
+        },
+        "setter", 1);
+    JSAtom name = JS_NewAtom(ctx, "var_with_getter_setter");
+    QJS_CALL(JS_DefineProperty(
+        ctx, global_this, name, JS_UNDEFINED, getter, setter,
+        JS_PROP_GETSET | JS_PROP_C_W_E |
+            // meanwhile you must set JS_PROP_HAS_SET | JS_PROP_HAS_GET
+            JS_PROP_HAS_GET | JS_PROP_HAS_SET));
+    
+    /* or use JS_DefinePropertyGetSet to simplify it
+     * JS_PROP_HAS_GET | JS_PROP_HAS_SET | JS_PROP_HAS_CONFIGURABLE |
+     * JS_PROP_HAS_ENUMERABLE by default
+     */
+    // JS_DefinePropertyGetSet(ctx, global_this, name, getter, setter,
+    //                         JS_PROP_WRITABLE);
+
+    JS_FreeAtom(ctx, name);
+    JS_FreeValue(ctx, getter);
+    JS_FreeValue(ctx, setter);
 
     // don't need free it
     // JS_FreeValue(ctx, new_obj);
