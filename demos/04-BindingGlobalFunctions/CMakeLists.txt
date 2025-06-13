@@ -1,0 +1,1 @@
+AddDemo(04_binding_global_functions)

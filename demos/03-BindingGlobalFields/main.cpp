@@ -35,6 +35,7 @@ int gGlobalVar = 123;
 int gNonChangableVar = 245;
 
 void BindMutable(JSContext* ctx) {
+    // Int32 value is directly copied into JSValue(no malloc), so we don't need JS_FreeValue it
     JSValue new_obj = JS_NewInt32(ctx, gGlobalVar);
     if (JS_IsException(new_obj)) {
         js_std_dump_error(ctx);
@@ -49,7 +50,6 @@ void BindMutable(JSContext* ctx) {
 
     // don't forget cleanup
     JS_FreeValue(ctx, global_this);
-    JS_FreeValue(ctx, new_obj);
 }
 
 void BindConst(JSContext* ctx) {
@@ -89,8 +89,6 @@ void BindConst(JSContext* ctx) {
     JS_DefinePropertyValue(ctx, global_this, name, new_obj, JS_PROP_ENUMERABLE);
     JS_FreeAtom(ctx, name);
 
-    // don't need free it
-    // JS_FreeValue(ctx, new_obj);
     JS_FreeValue(ctx, global_this);
 }
 
@@ -144,7 +142,6 @@ void BindByDifferentProperty(JSContext* ctx) {
                                        JS_PROP_THROW | JS_PROP_WRITABLE));
     QJS_CALL(JS_SetPropertyStr(ctx, global_this, "var_with_throw_writable",
                                new_obj2));
-    JS_FreeValue(ctx, new_obj2);
 
     // JS_PROP_GETSET can set field's getter & setter
     JSValue getter = JS_NewCFunction(
@@ -165,7 +162,7 @@ void BindByDifferentProperty(JSContext* ctx) {
     JSAtom name = JS_NewAtom(ctx, "var_with_getter_setter");
     QJS_CALL(JS_DefineProperty(
         ctx, global_this, name, JS_UNDEFINED, getter, setter,
-        JS_PROP_GETSET | JS_PROP_C_W_E |
+        JS_PROP_GETSET | JS_PROP_C_W_E | JS_PROP_HAS_VALUE |
             // meanwhile you must set JS_PROP_HAS_SET | JS_PROP_HAS_GET
             JS_PROP_HAS_GET | JS_PROP_HAS_SET));
     
@@ -176,12 +173,11 @@ void BindByDifferentProperty(JSContext* ctx) {
     // JS_DefinePropertyGetSet(ctx, global_this, name, getter, setter,
     //                         JS_PROP_WRITABLE);
 
-    JS_FreeAtom(ctx, name);
+    // here we need free, when you has JS_PROP_HAS_GET or JS_PROP_HAS_SET
     JS_FreeValue(ctx, getter);
     JS_FreeValue(ctx, setter);
+    JS_FreeAtom(ctx, name);
 
-    // don't need free it
-    // JS_FreeValue(ctx, new_obj);
     JS_FreeValue(ctx, global_this);
 }
 
