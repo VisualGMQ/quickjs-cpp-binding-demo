@@ -1,0 +1,1 @@
+AddDemo(05_binding_class)

@@ -1,41 +1,8 @@
 #include "quickjs-libc.h"
 #include "quickjs.h"
 
-#include <fstream>
 #include <iostream>
-#include <sstream>
-
-// most quickjs return -1 as error & 0 and success
-#define QJS_CALL(expr)                                                     \
-    do {                                                                   \
-        if ((expr) < 0)                                                    \
-            std::cerr << "QJS error when execute: " << #expr << std::endl; \
-    } while (0)
-
-void ExecuteScript(JSContext* ctx, const std::string& filename, int flags) {
-    std::ifstream file(filename, std::ios::in | std::ios::binary);
-    if (!file) {
-        std::cerr << "open file main.js failed" << std::endl;
-    }
-    std::stringstream ss;
-    ss << file.rdbuf();
-    std::string content = ss.str();
-
-    JSValue result =
-        JS_Eval(ctx, content.c_str(), content.size(), nullptr, flags);
-
-    if (JS_IsException(result)) {
-        js_std_dump_error(ctx);
-    }
-
-    JS_FreeValue(ctx, result);
-}
-
-void CheckJSValue(JSContext* ctx, JSValueConst value) {
-    if (JS_IsException(value)) {
-        js_std_dump_error(ctx);
-    }
-}
+#include "common.hpp"
 
 int Add(int a, int b) {
     return a + b; 
