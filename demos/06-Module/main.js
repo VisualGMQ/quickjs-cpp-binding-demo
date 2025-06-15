@@ -1,0 +1,7 @@
+import * as my_module from 'MyModule'
+
+console.log("1 + 5 = ", my_module.Add(1, 5))
+let person = new my_module.Person("QJSKid", 140, 11, 50)
+console.log(person)
+console.log(person.name)
+person.introduce()

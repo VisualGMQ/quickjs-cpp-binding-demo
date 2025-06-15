@@ -1,0 +1,1 @@
+AddDemo(06_module)
