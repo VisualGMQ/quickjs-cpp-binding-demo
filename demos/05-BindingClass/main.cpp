@@ -152,7 +152,7 @@ void BindClass(JSRuntime* runtime, JSContext* ctx) {
 
     JSValue global_var = JS_GetGlobalObject(ctx);
     QJS_CALL(JS_DefinePropertyValueStr(ctx, global_var, "Person", constructor,
-                                       JS_CFUNC_constructor));
+                                       JS_PROP_C_W_E));
 
     JS_FreeValue(ctx, global_var);
 }

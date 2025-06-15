@@ -74,9 +74,6 @@ void BindByDifferentProperty(JSContext* ctx) {
 
     JSValue global_this = JS_GetGlobalObject(ctx);
 
-    /**** NOTE: all property area JS_PROP_XXX rather than JS_PROP_HAS_XXX (the
-     * later is used for internal) *****/
-
     // enumerable variable can be used in `for ... in` and `Object.keys()`
     QJS_CALL(JS_DefinePropertyValueStr(ctx, global_this, "var_with_enumerable",
                                        new_obj, JS_PROP_ENUMERABLE));
